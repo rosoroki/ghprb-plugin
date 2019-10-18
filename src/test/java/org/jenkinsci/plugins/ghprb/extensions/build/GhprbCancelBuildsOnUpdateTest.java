@@ -39,7 +39,7 @@ public class GhprbCancelBuildsOnUpdateTest extends GhprbITBaseTestCase {
 
     @Test
     public void testCancelCurrentBuilds() {
-        builds.build(ghprbPullRequest, ghUser, "");
-        gcbou.cancelCurrentBuilds(project, 1);
+        builds.build(ghprbPullRequest, ghUser, "recheck");
+        gcbou.cancelCurrentBuilds(project, 1, "recheck");
     }
 }

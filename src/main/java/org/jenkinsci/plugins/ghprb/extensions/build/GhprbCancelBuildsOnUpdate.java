@@ -42,7 +42,7 @@ public class GhprbCancelBuildsOnUpdate extends GhprbExtension implements
     }
 
     protected void cancelCurrentBuilds(Job<?, ?> project,
-                                     Integer prId) {
+                                     Integer prId, String commentBody) {
         if (getOverrideGlobal()) {
             return;
         }
@@ -65,7 +65,7 @@ public class GhprbCancelBuildsOnUpdate extends GhprbExtension implements
                         qcause = (GhprbCause) cause;
                     }
                 }
-                if (qcause != null && qcause.getPullID() == prId) {
+                if (qcause != null && qcause.getPullID() == prId && qcause.getCommentBody().equals(commentBody)) {
                     try {
                         LOGGER.log(
                                 Level.FINER,
@@ -83,25 +83,25 @@ public class GhprbCancelBuildsOnUpdate extends GhprbExtension implements
         LOGGER.log(Level.FINER, "New build scheduled for " + project.getName() + " on PR # " + prId);
         RunList<?> runs = project.getBuilds();
         for (Run<?, ?> run : runs) {
-            if (!run.isBuilding() && !run.hasntStartedYet()) {
-                break;
-            }
             GhprbCause cause = Ghprb.getCause(run);
             if (cause == null) {
                 continue;
             }
-            if (cause.getPullID() == prId) {
-                try {
-                    LOGGER.log(
-                            Level.FINER,
-                            "Cancelling running build #" + run.getNumber() + " of "
-                                    + project.getName() + " for PR # " + cause.getPullID()
-                    );
-                    run.addAction(this);
-                    run.getExecutor().interrupt(Result.ABORTED);
-                } catch (Exception e) {
-                    LOGGER.log(Level.SEVERE, "Error while trying to interrupt build!", e);
+            if ((cause.getPullID() == prId) && (cause.getCommentBody().equals(commentBody))) {
+                if (run.isBuilding() || run.hasntStartedYet()) {
+                    try {
+                        LOGGER.log(
+                                Level.FINER,
+                                "Cancelling running build #" + run.getNumber() + " of "
+                                        + project.getName() + " for PR # " + cause.getPullID()
+                        );
+                        run.addAction(this);
+                        run.getExecutor().interrupt(Result.ABORTED);
+                    } catch (Exception e) {
+                        LOGGER.log(Level.SEVERE, "Error while trying to interrupt build!", e);
+                    }
                 }
+                break;
             }
         }
 
@@ -112,7 +112,7 @@ public class GhprbCancelBuildsOnUpdate extends GhprbExtension implements
             return;
         }
         if (project.isBuilding() || project.isInQueue()) {
-            cancelCurrentBuilds(project, cause.getPullID());
+            cancelCurrentBuilds(project, cause.getPullID(), cause.getCommentBody());
         }
     }
 
